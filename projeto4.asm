@@ -5,10 +5,9 @@
 .data
 	msg1:	.asciiz	"digite um valor entre 0 e 1 (flutuante): "
 	msg2:	.asciiz	"voce digitou: "
-	p: .float 1.0
 	a1: .float 3.0
-	x: .float 0.0
-	erro: .float 0.001
+	x: .float 0.1
+	erro: .float 0.000001
 
 # ======== codigo ========
 .text
@@ -21,34 +20,44 @@ le_float:
 	li $v0, 6	# para ler o valor de m e guardar em $f0
 	syscall
 
-	lwc1 $f1, p	# $f1 recebe o valor de p = 1
+	lwc1 $f1, x	# $f1 recebe o valor de x
 	lwc1 $f2, a1	# $f2 recebe o valor 3
-	lwc1 $f3, x	# $f2 recebe o valor de x
-	lwc1 $f6, erro	# $f6 recebe o valor do erro
-	mul.s $f2, $f2, $f1 	# $f2 recebe 3*p = 3*p²
-	sub.s $f1, $f1, $f0	# calcula p³-m 
+	lwc1 $f5, erro	# $f5 recebe o valor do erro
+	j expoente_x1	# desvio para expoente_x1	
+	
+	calc_x1:
+		sub.s $f4, $f4, $f0	# calcula x³-m
+		mul.s $f3, $f3, $f2	# calcula 3*x²
+		div.s $f6, $f4, $f3	# calcula (x³-m)/3*x²
+		abs.s $f6, $f6		# módulo do novo x
+		add.s $f6, $f1, $f6	# calcula x-[(x³-m)/3*x²]
 
 loop_raiz: 
-	mov.s $f4, $f3		# $f4 recebe o valor de x inicial e x anterior
-	mul.s $f4, $f4, $f4	# eleva x ao quadrado
-	mul.s $f5 , $f2, $f4	# calcula 3p*x²
-	mul.s $f4, $f4, $f4	# eleva x ao quadrado
-	add.s $f3, $f1, $f5	# calcula a p³-m+3px² 	
-	sub.s $f5 , $f5, $f4	# calcula 3px²-x³
-	div.s $f3, $f3, $f2	# calcula valor definitivo de x =  (p³-m+3px²-x³)/3p²
-	sub.s $f7, $f3, $f4	# calcula o erro atual
-	mov.s $f12, $f7 
-	c.lt.s $f6, $f7		# campara se erro é menor que o erro atual
-	mov.s $f12, $f3
-	bc1t loop_raiz	# se x é diferente de x anterior continua o loop
-	#bc1f imprime_saida	# se x é igual a x anterior calcula a raiz de m
+	mov.s $f1, $f6		# atualiza valor de x
+	j expoente	# desvio para expoente	
+	
+	calc_x:
+		sub.s $f4, $f4, $f0	# calcula x³-m
+		mul.s $f3, $f3, $f2	# calcula 3*x²
+		div.s $f6, $f4, $f3	# calcula (x³-m)/3*x²
+		sub.s $f6, $f1, $f6	# calcula x-[(x³-m)/3*x²]
+		sub.s $f7, $f1, $f6	# calcula diferença entre x e x anterior
+		abs.s $f7, $f7		# módulo da diferença entre x e x anterior
+		c.lt.s $f7, $f5		# verifica se $f7 é menor que erro
+		bc1f loop_raiz		#continua loop
+		bc1t imprime_saida	#desvio para imprime_saida
 
-calc_raiz:
-	lwc1 $f1, p	# $f1 recebe o valor de p = 1
-	sub.s $f12, $f1, $f3	# calcula a raiz de m	
-	#j imprime_saida
+expoente_x1:
+	mul.s $f3, $f1, $f1	# calcula x²
+	mul.s $f4, $f3, $f1	# calcula x³
+	j calc_x1
+	
+expoente:
+	mul.s $f3, $f1, $f1	# calcula x²
+	mul.s $f4, $f3, $f1	# calcula x³
+	j calc_x
 
 imprime_saida:
-	
+	mov.s $f12, $f6		# $f2 recebe raiz cúbica de m
 	li $v0, 2	# parâmentro para printar float
 	syscall
